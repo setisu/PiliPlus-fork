@@ -363,10 +363,3 @@ flutter:
   #     - asset: assets/fonts/HarmonyOS_Sans_SC_Regular.ttf
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages
-  android:
-    # 核心修改：允许安装在Android 4.4 (API 19) 及以上的设备
-    minSdkVersion: 19
-    # 核心修改：让应用以Android 5.1 (API 22) 的行为运行，以获得最佳老设备兼容性
-    targetSdkVersion: 22
-    # 保持用较新的SDK编译，以确保能使用必要的库
-    compileSdkVersion: 34
