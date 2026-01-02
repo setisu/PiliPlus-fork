@@ -79,7 +79,42 @@ jobs:
                 sed -i.bak -E "s/targetSdkVersion\s*[0-9]+/targetSdkVersion 22/g; s/targetSdk\s*[0-9]+/targetSdk 22/g" "$file"
               done
           echo "=== 所有插件的SDK版本已强制覆盖为19/22 ==="
-
+      - name: 5.7 【最终手段】直接修改合并后的AndroidManifest
+        run: |
+          echo "=== 开始查找并修改合并后的AndroidManifest文件 ==="
+          # 进入Android项目目录
+          cd android
+          # 1. 首先，尝试在构建 intermediates 目录中查找合并后的清单文件
+          # 它通常在 app/build/intermediates/merged_manifests/debug/AndroidManifest.xml 或类似路径
+          # 由于路径可能变化，我们使用 find 命令定位
+          MERGED_MANIFEST=$(find . -path "*/merged_manifests/*/AndroidManifest.xml" -type f | head -1)
+          
+          if [ -f "$MERGED_MANIFEST" ]; then
+            echo "找到合并后的清单文件: $MERGED_MANIFEST"
+            # 备份原文件
+            cp "$MERGED_MANIFEST" "${MERGED_MANIFEST}.bak"
+            # 使用sed删除或覆盖任何 <uses-sdk> 标签，替换为我们指定的版本
+            sed -i '/<uses-sdk/,/\/>/d' "$MERGED_MANIFEST"
+            # 在 <application> 标签前插入我们自己的 <uses-sdk> 定义
+            sed -i 's/<application>/<uses-sdk android:minSdkVersion="19" android:targetSdkVersion="22" \/>\n<application>/' "$MERGED_MANIFEST"
+            echo "✅ 已强制修改合并后的AndroidManifest.xml"
+          else
+            echo "⚠️  未找到合并后的清单文件，尝试在主清单中修改..."
+            # 如果找不到，则直接修改主项目的清单文件
+            MAIN_MANIFEST="app/src/main/AndroidManifest.xml"
+            if [ -f "$MAIN_MANIFEST" ]; then
+              cp "$MAIN_MANIFEST" "${MAIN_MANIFEST}.bak"
+              # 确保主清单中有我们需要的 <uses-sdk> 标签
+              if ! grep -q "uses-sdk" "$MAIN_MANIFEST"; then
+                sed -i 's/<manifest/<manifest xmlns:android="http:\/\/schemas.android.com\/apk\/res\/android">\n    <uses-sdk android:minSdkVersion="19" android:targetSdkVersion="22" \/>/' "$MAIN_MANIFEST"
+              else
+                sed -i 's/android:minSdkVersion="[^"]*"/android:minSdkVersion="19"/g; s/android:targetSdkVersion="[^"]*"/android:targetSdkVersion="22"/g' "$MAIN_MANIFEST"
+              fi
+              echo "✅ 已修改主AndroidManifest.xml"
+            else
+              echo "❌ 错误：未找到任何可修改的AndroidManifest.xml文件"
+            fi
+          fi
       - name: 6. 构建APK (关键步骤)
         run: |
           flutter build apk --debug --target-platform android-arm
