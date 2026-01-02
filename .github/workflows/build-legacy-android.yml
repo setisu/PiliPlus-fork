@@ -1,9 +1,7 @@
 name: Build Legacy APK for Old Projector
 
 on:
-  # 允许在GitHub网页上手动触发构建
   workflow_dispatch:
-  # 你也可以取消下面这行的注释，以便每次推送到main分支时自动构建（用于测试）
   # push:
   #   branches: [ main ]
 
@@ -25,27 +23,32 @@ jobs:
       - name: 3. 安装指定版本 Flutter
         uses: subosito/flutter-action@v2
         with:
-          # 使用你 pubspec.yaml 中指定的 Flutter 版本
           flutter-version-file: pubspec.yaml
           cache: true
 
-      - name: 4. 应用底部弹窗补丁 (可选，原流程有此步骤)
+      - name: 4. 应用底部弹窗补丁 (可选)
         working-directory: ${{ env.FLUTTER_ROOT }}
         run: git apply $GITHUB_WORKSPACE/lib/scripts/bottom_sheet_patch.diff
-        continue-on-error: true # 如果补丁文件不存在或失败，继续执行
+        continue-on-error: true
 
       - name: 5. 获取依赖 & 应用配置
         run: |
           flutter clean
           flutter pub get
-        # 此步骤将应用你在 pubspec.yaml 中设置的 minSdkVersion: 19
+
+      # ========== 新增的关键步骤 ==========
+      - name: 5.5 强制覆盖所有插件的SDK版本
+        run: |
+          # 在Android目录创建gradle.properties，强制所有子模块使用指定版本
+          echo "android.minSdkVersion=19" >> android/gradle.properties
+          echo "android.targetSdkVersion=22" >> android/gradle.properties
+          echo "android.compileSdkVersion=34" >> android/gradle.properties
+          echo "✅ 已强制设置所有模块的SDK版本为19/22/34"
+      # ==================================
 
       - name: 6. 构建APK (关键步骤)
         run: |
-          # 构建适用于32位ARM老设备的APK，使用debug模式避免签名问题
           flutter build apk --debug --target-platform android-arm
-          # 备注：如果需要 release 版进行分发，你需要配置签名，这很复杂。
-          # 目前使用 --debug 模式构建是测试安装兼容性最快的方式。
 
       - name: 7. 重命名APK以便识别
         run: |
@@ -58,4 +61,4 @@ jobs:
         with:
           name: legacy-debug-apk
           path: build/app/outputs/flutter-apk/PiliPlus_Legacy_Device_Debug.apk
-          retention-days: 7 # 保留7天
+          retention-days: 7
