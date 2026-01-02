@@ -37,13 +37,20 @@ jobs:
           flutter pub get
 
       # ========== 新增的关键步骤 ==========
-      - name: 5.5 强制覆盖所有插件的SDK版本
+      - name: 5.5 强制覆盖所有插件的SDK版本（修正版）
         run: |
-          # 在Android目录创建gradle.properties，强制所有子模块使用指定版本
-          echo "android.minSdkVersion=19" >> android/gradle.properties
-          echo "android.targetSdkVersion=22" >> android/gradle.properties
-          echo "android.compileSdkVersion=34" >> android/gradle.properties
-          echo "✅ 已强制设置所有模块的SDK版本为19/22/34"
+          # 进入android目录，创建/覆盖gradle.properties文件
+          cd android
+          # 将以下配置写入文件，> 操作符会创建新文件或完全覆盖旧文件
+          cat > gradle.properties << EOF
+          # 强制所有模块使用指定的SDK版本
+          android.minSdkVersion=19
+          android.targetSdkVersion=22
+          android.compileSdkVersion=34
+          # 保留可能必要的其他默认配置
+          android.enableJetifier=true
+          EOF
+          echo "✅ 已创建全新的gradle.properties，强制SDK版本为19/22/34"
       # ==================================
 
       - name: 6. 构建APK (关键步骤)
