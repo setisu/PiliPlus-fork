@@ -37,24 +37,30 @@ jobs:
           flutter pub get
 
       # ========== 新增的关键步骤 ==========
-      - name: 5.5 强制覆盖所有插件的SDK版本（完整配置版）
+      - name: 5.5 优化Gradle配置并强制SDK版本
         run: |
-          # 进入android目录，创建/覆盖gradle.properties文件
           cd android
-          # 将以下完整配置写入文件，确保格式正确
-          cat > gradle.properties << EOF
-          # 启用AndroidX和Jetifier（两者必须同时启用）
-          android.useAndroidX=true
-          android.enableJetifier=true
-          # 强制所有模块使用指定的SDK版本（核心目标）
+          cat > gradle.properties << 'EOF'
+          # 核心：强制SDK版本以兼容老设备
           android.minSdkVersion=19
           android.targetSdkVersion=22
           android.compileSdkVersion=34
-          # 可选的性能优化配置
+          
+          # 启用AndroidX
+          android.useAndroidX=true
+          android.enableJetifier=true
+          
+          # ==== 内存与性能优化（解决GC Thrashing）====
+          # 为Gradle守护进程分配更大内存
+          org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8
+          # 启用并行构建和配置缓存
           org.gradle.parallel=true
+          org.gradle.caching=true
+          org.gradle.configureondemand=true
+          # 启用Gradle守护进程（加快重复构建）
           org.gradle.daemon=true
           EOF
-          echo "✅ 已创建完整的gradle.properties，已启用AndroidX并强制SDK版本为19/22/34"
+          echo "✅ 已配置优化后的gradle.properties（含大内存设置）"
       # ==================================
 
       - name: 6. 构建APK (关键步骤)
